@@ -154,7 +154,7 @@ const vm = new Vue({
 
 **v-model 的修饰符**
 
-![](VUE学习笔记.assets/v-model的修饰符-16568690665764.png)
+![](VUE学习笔记.assets/v-model的修饰符.png)
 
 .number 示例：
 
@@ -389,11 +389,13 @@ computed: {
 
 axios 是专注于网络请求的库！
 
+axios 的返回值是 Promise 。可以加 await / async 进行简化。
+
 ## 基本使用语法：
 
 发起 GET 请求：
 
-```vue
+```js
 // 调用 axios 方法得到的返回值是 Promise 对象
 // 如果调用某个方法的返回值是 promise 实例，则前面可以添加 await ！
 // await 只能用在被 async “修饰”的方法中
@@ -410,9 +412,37 @@ axios({
 })
 ```
 
-# 看到77P，
+axios **直接发起 GET请求 和POST请求**：
 
-# 227 -
+```js
+	<button id="btnGET">GET</button>
+    <button id="btnPOST">POST</button>
+
+    <script src="./lib/axios.js"></script>
+
+    <script>
+        document.querySelector("#btnGET").addEventListener("click", async function () {
+            const { data: result } = await axios.get("http://www.liulongbin.top:3006/api/getbooks", {
+                params: { id: 1 }
+            })
+            console.log(result.data);
+        })
+
+        document.querySelector("#btnPOST").addEventListener("click", async function () {
+            const { data: result } = await axios.post("http://www.liulongbin.top:3006/api/post", {
+                data: {
+                    name: "zs",
+                    sex: "男"
+                }
+            })
+            console.log(result);
+        })
+    </script>
+```
+
+# vue-cli
+
+
 
 # ES6 模块化
 
@@ -518,6 +548,171 @@ import "./上面代码的路径.js"; // 打印输出 0，1，2
 + 大量冗余的代码相互嵌套，代码的可读性变差。
 
 所以在 ES6 中新增了 **Promise** 的概念来**解决**回调地狱。
+
+## Promise 的基本概念
+
+promise 是一个构造函数：
+
++ 我们可以创建 Promise 的实例 const p = new Promise();
++ new 出来的 Promise 实例对象，代表一个**异步操作**。
+
+Promise.prototype 上包含一个 **.then()** 对象：
+
++ 每一次 new Promise() 构造函数得到的实例对象，都可以通过**原型链**的方式访问到 .then() 方法，例如 p.then();
+
+.then() 方法用来预先指定成功和失败的回调函数：
+
++ p.then(result => {}, error => {})
++ 调用 .then() 方法时，**成功的回调函数是必选的**，失败的回调函数是可选的。
+
+**通过 .catch(err => {}) 来捕获错误**。
+
+## Promise.all() 方法
+
+Promise.all() 方法会发起**并行**的 Promise 异步操作，等所有的异步操作**全部执行完毕**才会执行下一步的 .then() 操作（等待机制）。
+
+## Promise.race() 方法
+
+Promise.race() 方法会发起**并行**的 Promise 异步操作，只要**任何一个**异步操作完成，就立即执行下一步的 .then() 操作（赛跑机制）。
+
+## 基于 Promise 封装读文件的方法
+
+方法的封装要求：
+
+1. 方法名为 getFile。
+2. 方法接收一个形参 fpath ，表示要读取文件的路径。
+3. 方法的返回值为 Promise 实例对象。
+
+**getFile 方法的基本定义**
+
+```js
+// node.js 自带
+import fs from "fs";
+
+function getFile(fpach) {
+	// 方法的返回值是一个 Promise 对象
+	return new Promise(function (resolve, reject) {
+        // 下面这行代码表示，这是一个具体的、读文件的异步操作
+        fs.readFile(fpach, "utf-8", (err, dataStr) => {
+        	// 如果读取失败，则调用 失败的回调函数
+            if (err) {
+                return reject (err);
+            }
+            // 如果读取成功，则调用 成功的回调函数
+            resolve (dataStr)
+    	});
+    });
+}
+```
+
+# async/await 的基本使用
+
+使用 async/await 简化 Promise 异步操作。
+
+如果用 await 来修饰一个返回值为 Promise 的函数，它的返回值不再是 Promise ，而是真正的值。
+
+如果方法内部用到了 await ，则这个方法**必须**被 async 修饰。
+
+**注意！**：在 async 方法中，**第一个 await 之前的代码会同步执行**，await 之后的代码会异步执行。
+
+所以下图中 getAllFile() 方法中 B 是同步执行的，剩余方法后面的内容全是异步执行的，所以先完成同步执行，再完成异步执行。
+
+![image-20220707143658918](VUE学习笔记.assets/注意事项.png)
+
+输出结果为：
+
+![image-20220707143917819](VUE学习笔记.assets/输出的结果.png)
+
+# EventLoop
+
+JavaScript 是一门**单线程执行**的语言，就是说，同一时间只能做一件事情。
+
+![image-20220707143917819](VUE学习笔记.assets/JS单项线程执行.png)
+
+单线程执行任务队列的问题：
+
+如果前一个任务非常耗时，则后续的任务就会一直等待，从而导致**程序假死**的问题。
+
+## 同步任务和异步任务
+
+为了防止某个耗时任务导致程序假死的问题，JS 把待执行任务分为了同步任务和异步任务。
+
+同步任务（synchronous）：
+
++ 又叫做**非耗时任务**，指的是再主线程上排队执行的哪些任务。
++ 只有前一个任务执行完毕，才能执行下一个任务。
+
+异步任务（**async**hronous）：
+
++ 又叫做**耗时任务**，异步任务由 JavaScript 委托给宿主环境 (JS的执行环境) 进行执行。
++ 当异步任务执行完成后，会通知 JavaScript  主线程执行异步任务的回调 函数。
+
+## EventLoop的基本概念：
+
+![image-20220707155737527](VUE学习笔记.assets/EventLoop.png)
+
+执行栈把异步任务委托给宿主环境执行，当宿主环境将异步任务执行完毕之后，会把对应的回调函数放入任务队列中，当 JS 把执行栈中的同步任务都执行完毕之后，会主动将任务队列中的异步任务的回调函数取出来放入执行栈中去执行。
+
+> 把异步任务的回调函数从任务队列取出来放入执行栈的过程是循环不断的，所以整个的运行机制又称为EventLoop（事件循环）。
+
+# 宏任务和微任务
+
+## 什么是宏任务和微任务
+
+JavaScript 把异步任务又做了进一步的划分，分为两类：宏任务和微任务。
+
+宏任务（macrotask）:
+
++ 异步 Ajax 请求
++ setTimeout、setInterval
++ 文件操作
++ 其他宏任务
+
+微任务（microtask）:
+
++ promise.then 、 .catch 和 .finally
++ process.nextTick
++ 其他微任务
+
+宏任务和微任务的执行顺序：
+
+![image-20220707172413200](VUE学习笔记.assets/宏任务和微任务的执行顺序.png)
+
+每一个**宏、同步任务**执行完毕之后，都会检查是否存在待执行的微任务，如果有，执行所有微任务，结束之后再执行下一个微任务。
+
+若一个宏任务中又包含了宏任务与微任务，也是先执行里面的宏任务。
+
+同步任务 | **->** 微任务 **->** 宏任务 **->** 微任务 **->** ...
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
